@@ -227,6 +227,10 @@
           <label for="description">Description (optional)</label>
           <input id="description" name="description" placeholder="Checkout payment">
         </div>
+        <div class="field">
+          <label for="channelId">Payment channel</label>
+          <input id="channelId" name="channelId" value="PAYL-FFJZR5">
+        </div>
         <button id="submit-btn" type="submit">Send STK prompt</button>
         <p id="error" class="error" style="display:none;"></p>
       </form>
@@ -279,6 +283,7 @@ form.addEventListener('submit', async (e) => {
   const amount = Number(document.getElementById('amount').value);
   const reference = document.getElementById('reference').value.trim();
   const description = document.getElementById('description').value.trim();
+  const channelId = document.getElementById('channelId').value.trim();
 
   btn.disabled = true;
   btn.textContent = 'Sending…';
@@ -287,7 +292,7 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch('/.netlify/functions/stk-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, amount, reference, description })
+      body: JSON.stringify({ phone, amount, reference, description, channelId })
     });
     const data = await res.json();
 
