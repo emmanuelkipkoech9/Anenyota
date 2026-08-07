@@ -6,7 +6,7 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const apiKey = process.env.PAYLOR_API_KEY;
+  const apiKey = "pk_z8Oze0kjIu8Nd1P9qN31Y-nK0oaRcvhA ";
   if (!apiKey) {
     return { statusCode: 500, body: JSON.stringify({ error: 'PAYLOR_API_KEY is not configured' }) };
   }
