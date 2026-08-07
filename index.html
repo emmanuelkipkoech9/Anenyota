@@ -1,0 +1,323 @@
+Local Payments (M-Pesa Kenya) | Paylor Docs
+Paylor
+Dark
+
+Kenya payments
+
+Local Payments API
+Use the Kenya merchant payment APIs for M-Pesa STK Push, B2C payouts, transaction queries, and wallet balance checks.
+
+How local payments work
+Local Payments use the Kenya merchant wallet and M-Pesa rails. These are separate from the Global custodial wallet.
+
+Collect
+Trigger STK Push using a customer phone number and amount.
+
+Pay out
+Send B2C payments for refunds, suppliers, or staff.
+
+Track
+Read wallet balances before payouts and reconcile using transaction references.
+
+STK Push
+Use STK Push (Lipa na M-Pesa Online) when the customer is present and can approve the prompt on their phone with their M-Pesa PIN.
+
+POST
+/api/v1/merchants/payments/stk-push
+Initiate STK Push
+Trigger a Lipa na M-Pesa Online prompt to a customer phone number.
+
+Request body
+json
+Copy
+{
+  "phone": "254712345678",
+  "amount": 1000,
+  "reference": "ORDER-12345",
+  "channelId": "PAYL-XJ7K2P",
+  "description": "Checkout payment",
+  "callbackUrl": "https://example.com/paylor-callback"
+}
+Response
+json
+Copy
+{
+  "transactionId": "665f4c1b9a8d2e001f2a1234",
+  "status": "SENT"
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+POST /api/v1/merchants/payments/stk-push
+bash
+Copy
+curl -X POST https://api.paylorke.com/api/v1/api/v1/merchants/payments/stk-push \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "phone": "254712345678",
+  "amount": 1000,
+  "reference": "ORDER-12345",
+  "channelId": "PAYL-XJ7K2P",
+  "description": "Checkout payment",
+  "callbackUrl": "https://example.com/paylor-callback"
+}'
+Node.js
+Python
+PHP
+cURL
+Initiate STK Push
+javascript
+Copy
+const axios = require('axios');
+ 
+const response = await axios.post(
+  'https://api.paylorke.com/api/v1/merchants/payments/stk-push',
+  {
+    phone: '254712345678',
+    amount: 1000,
+    reference: 'ORDER-123',
+    channelId: 'PAYL-XXXXXX',
+    description: 'Payment for Service'
+  },
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'Content-Type': 'application/json'
+    }
+  }
+);
+phone, amount, and reference are required. channelId is optional — when omitted, Paylor routes through your default active channel. Provide a callbackUrl to receive instant payment notifications signed with your Webhook Secret — see the Webhooks section for verification. Idempotency-Key headers are supported on all payment creation endpoints.
+B2C payouts
+Send money to any M-Pesa registered number for refunds, suppliers, staff, or operational disbursements. Min 10, max 150,000 KES per transaction.
+
+POST
+/api/v1/merchants/payments/b2c
+Send B2C payout
+Send money to a customer, supplier, staff member, or refund recipient.
+
+Request body
+json
+Copy
+{
+  "phone": "254712345678",
+  "amount": 500,
+  "reference": "REFUND-9821",
+  "remarks": "Customer refund",
+  "callbackUrl": "https://example.com/paylor-callback"
+}
+Response
+json
+Copy
+{
+  "transactionId": "665f4c1b9a8d2e001f2a5678",
+  "originatorConversationId": "AG_20260701_...",
+  "conversationId": "AG_20260701_...",
+  "status": "QUEUED",
+  "message": "Accept the service request successfully.",
+  "pricingQuote": {
+    "amount": 500,
+    "fee": 10,
+    "total": 510
+  }
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+POST /api/v1/merchants/payments/b2c
+bash
+Copy
+curl -X POST https://api.paylorke.com/api/v1/api/v1/merchants/payments/b2c \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "phone": "254712345678",
+  "amount": 500,
+  "reference": "REFUND-9821",
+  "remarks": "Customer refund",
+  "callbackUrl": "https://example.com/paylor-callback"
+}'
+Optional fields: description (alias remarks), commandId (SalaryPayment, BusinessPayment, or PromotionPayment), and callbackUrl. The response includes a pricingQuote with the fee charged for the payout.
+Query transactions
+Check the status of a transaction at any time. This is the recommended reconciliation path when a webhook delivery is missed.
+
+GET
+/api/v1/merchants/payments/transactions/:transactionId
+Query transaction status
+Check the status of any transaction. Useful for verifying payments if a webhook delivery is missed.
+
+No request body
+Use the Authorization header and query string parameters shown in the endpoint path.
+
+Response
+json
+Copy
+{
+  "id": "665f4c1b9a8d2e001f2a1234",
+  "reference": "ORDER-12345",
+  "amount": 1000,
+  "status": "COMPLETED",
+  "provider": "MPESA",
+  "providerRef": "ws_CO_...",
+  "metadata": {
+    "mpesaReceipt": "RFL8S2K9P0"
+  }
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+GET /api/v1/merchants/payments/transactions/:transactionId
+bash
+Copy
+curl -X GET https://api.paylorke.com/api/v1/api/v1/merchants/payments/transactions/:transactionId \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+GET
+/api/v1/merchants/payments/transactions?limit=50&offset=0&flow=standard
+List transactions
+List transactions with limit/offset pagination. The flow query parameter accepts standard (default), b2c, or all.
+
+No request body
+Use the Authorization header and query string parameters shown in the endpoint path.
+
+Response
+json
+Copy
+{
+  "transactions": [
+    {
+      "id": "665f4c1b9a8d2e001f2a1234",
+      "reference": "ORDER-12345",
+      "amount": 1000,
+      "status": "COMPLETED"
+    }
+  ],
+  "total": 128
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+GET /api/v1/merchants/payments/transactions
+bash
+Copy
+curl -X GET https://api.paylorke.com/api/v1/api/v1/merchants/payments/transactions?limit=50&offset=0&flow=standard \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+B2C performance metrics
+Retrieve aggregated payout data, including total volume and transaction counts.
+
+GET
+/api/v1/merchants/payments/stats/b2c
+B2C performance metrics
+Retrieve aggregated payout history data, including total volume and transaction counts.
+
+No request body
+Use the Authorization header and query string parameters shown in the endpoint path.
+
+Response
+json
+Copy
+{
+  "success": true,
+  "stats": {
+    "totalVolume": 250000,
+    "count": 182
+  }
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+GET /api/v1/merchants/payments/stats/b2c
+bash
+Copy
+curl -X GET https://api.paylorke.com/api/v1/api/v1/merchants/payments/stats/b2c \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+Wallet API
+Monitor service credits and B2C float programmatically to avoid transaction failures.
+
+Service credits
+A prepaid KES float (balance) that Paylor transaction fees are drawn from. It is not the money your customers pay you.
+
+B2C float
+A separate balance (b2cBalance) funding outbound payouts. Pending payouts are ring-fenced in b2cHeldBalance.
+
+Read-only over the API
+An API key with wallet:read can check balances. Adding credits is a dashboard action — there is no top-up endpoint.
+
+Credits are checked, then charged. STK Push is rejected with 402 PAYMENT_REQUIRED if balance is below the fee for that amount, and the fee is only deducted once the payment completes — failed and abandoned prompts cost nothing. Crypto payments are charged the same way on confirmation, converted to KES. For B2C, the payout and carrier cost come out of b2cBalance while the Paylor platform fee comes out of balance, so a payout needs both balances funded.
+Poll this endpoint and alert on a low balance. A completed payment is never reversed for insufficient credit — the fee is still charged and balance can go negative, after which new payments are blocked until you top up.
+GET
+/api/v1/merchants/payments/wallet
+Check merchant wallet
+Read service credit and payout balances before initiating a payment. Requires the wallet:read scope. balance is the service credit float that transaction fees are drawn from; b2cBalance is the separate payout float. transactions holds the 20 most recent raw wallet ledger entries (TOPUP, FEE, B2C_TOPUP, B2C_PAYOUT, B2C_FEE, B2C_HOLD), where debits are negative amounts. This endpoint is read-only — topping up is done from the dashboard.
+
+No request body
+Use the Authorization header and query string parameters shown in the endpoint path.
+
+Response
+json
+Copy
+{
+  "success": true,
+  "wallet": {
+    "balance": 12000,
+    "b2cBalance": 5000,
+    "b2cHeldBalance": 1500,
+    "b2cAvailableBalance": 3500,
+    "b2cOutstandingBalance": 0,
+    "b2cHolds": [
+      {
+        "id": "665f4c1b9a8d2e001f2a3333",
+        "amount": 1500,
+        "reason": "B2C payout hold",
+        "holdType": "PAYOUT",
+        "reference": "PAYOUT-12345",
+        "createdAt": "2026-07-30T09:12:44.001Z"
+      }
+    ],
+    "currency": "KES"
+  },
+  "b2cStats": {
+    "totalVolume": 250000,
+    "count": 182
+  },
+  "transactions": [
+    {
+      "_id": "665f4c1b9a8d2e001f2a4444",
+      "type": "FEE",
+      "amount": -12,
+      "status": "COMPLETED",
+      "reference": "ORDER-12345",
+      "description": "Transaction Fee for ORDER-12345",
+      "createdAt": "2026-07-30T09:10:02.114Z"
+    }
+  ]
+}
+Code examples
+
+cURL
+Node.js
+Python
+PHP
+GET /api/v1/merchants/payments/wallet
+bash
+Copy
+curl -X GET https://api.paylorke.com/api/v1/api/v1/merchants/payments/wallet \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
