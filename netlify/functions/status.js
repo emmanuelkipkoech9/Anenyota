@@ -1,43 +1,58 @@
-// netlify/functions/status.js
-// Looks up a transaction's status by id. Called by the frontend while polling.
-// Usage: /.netlify/functions/status?id=<transactionId>
+const fetch = require('node-fetch');
+
+const apiKey = "pk_z8Oze0kjIu8Nd1P9qN31Y-nK0oaRcvhA".trim();
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  };
 
-  const apiKey = " pk_z8Oze0kjIu8Nd1P9qN31Y-nK0oaRcvhA ";
-  if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'PAYLOR_API_KEY is not configured' }) };
-  }
-
-  const id = event.queryStringParameters && event.queryStringParameters.id;
-  if (!id) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing id query parameter' }) };
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    const response = await fetch(
-      `https://api.paylorke.com/api/v1/merchants/payments/transactions/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+    const pathParts = event.path.split('/');
+    const transactionId = pathParts[pathParts.length - 1];
+
+    if (!transactionId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Transaction ID is required' })
+      };
+    }
+
+    const response = await fetch(`https://api.paylorke.com/api/v1/merchants/payments/transactions/${transactionId}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
       }
-    );
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        statusCode: response.status,
+        headers,
+        body: JSON.stringify({ error: text || 'Failed to fetch transaction status' })
+      };
+    }
 
     const data = await response.json();
-
     return {
-      statusCode: response.status,
-      body: JSON.stringify(data),
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(data)
     };
-  } catch (err) {
+  } catch (error) {
+    console.error('Status Error:', error);
     return {
-      statusCode: 502,
-      body: JSON.stringify({ error: 'Failed to reach Paylor', detail: err.message }),
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal server error: ' + error.message })
     };
   }
 };
